@@ -22,7 +22,7 @@ data class ApiPreset(val name: String, val url: String, val model: String)
 
 val API_PRESETS = listOf(
     ApiPreset("OpenAI",         "https://api.openai.com/v1",                               "gpt-4o-mini"),
-    ApiPreset("DS V4 Pro",      "https://api.deepseek.com/v1",                             "deepseek-v4-pro"),
+    ApiPreset("DS V4 Pro",      "https://api.deepseek.com",                               "deepseek-v4-pro"),
     ApiPreset("DS V4 Flash",    "https://api.deepseek.com/v1",                             "deepseek-v4-flash"),
     ApiPreset("Gemini",         "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-2.0-flash"),
     ApiPreset("Ollama",         "http://localhost:11434/v1",                                "llama3"),
@@ -182,7 +182,7 @@ fun SettingsScreen(vm: ChatViewModel) {
         // Status
         testStatus?.let { status ->
             val (bg, border, text, msg) = when (status) {
-                "testing" -> listOf(Color(0x0DFFFFFF), Color(0x1AFFFFFF), NyxColors.TextDim, "连接中…")
+                "testing" -> listOf(Color(0x0DFFFFFF), Color(0x1AFFF), NyxColors.TextDim, "连接中…")
                 "ok"      -> listOf(Color(0x0D34D399), Color(0x4D34D399), NyxColors.Success, "✓  连接成功")
                 "saved"   -> listOf(Color(0x0D9D6FFF), Color(0x4D9D6FFF), NyxColors.AccentSoft, "✓  已保存")
                 else      -> listOf(Color(0x14F87171), Color(0x4DF87171), NyxColors.Error, "✗  连接失败")
