@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">永恒之家</string>
+    
+    <!-- 通知相关字符串 -->
+    <string name="notification_channel_description">来自 %1$s 的消息</string>
+    <string name="notification_reply_label">回复 %1$s…</string>
+    <string name="notification_reply_action">回复</string>
+    <string name="notification_typing_text">正在输入…</string>
+</resources>
