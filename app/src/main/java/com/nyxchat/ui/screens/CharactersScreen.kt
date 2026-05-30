@@ -45,6 +45,13 @@ fun CharactersScreen(vm: ChatViewModel) {
     var showAdd   by remember { mutableStateOf(false) }
     var sortOrder by remember { mutableStateOf("name") } // "name" or "active"
 
+    val sortedChars = remember(chars, sortOrder) {
+        when (sortOrder) {
+            "active" -> chars.sortedByDescending { it.lastActiveAt }
+            else -> chars.sortedBy { it.name.lowercase() }
+        }
+    }
+
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(14.dp),
@@ -70,15 +77,9 @@ fun CharactersScreen(vm: ChatViewModel) {
                 }
             }
         }
+    }
 
-        val sortedChars = remember(chars, sortOrder) {
-            when (sortOrder) {
-                "active" -> chars.sortedByDescending { it.lastActiveAt }
-                else -> chars.sortedBy { it.name.lowercase() }
-            }
-        }
-
-        items(sortedChars, key = { it.id }) { char ->
+    items(sortedChars, key = { it.id }) { char ->
             val charMems = memories.filter { it.charId == char.id }
             CharacterCard(
                 char = char, charMems = charMems,
