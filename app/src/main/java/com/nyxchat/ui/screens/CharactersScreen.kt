@@ -76,6 +76,7 @@ fun CharactersScreen(vm: ChatViewModel) {
 
                 }
             }
+        }
         items(sortedChars, key = { it.id }) { char ->
             val charMems = memories.filter { it.charId == char.id }
             CharacterCard(
