@@ -215,7 +215,7 @@ fun MessageBubble(msg: NyxMessage, chars: List<NyxCharacter>, showCursor: Boolea
                 color = NyxColors.TextDim,
                 fontSize = 9.sp,
                 fontFamily = FontFamily.Monospace,
-                modifier = Modifier.padding(top = 3.dp, horizontal = 4.dp)
+                modifier = Modifier.padding(start = 4.dp, top = 3.dp, end = 4.dp)
             )
         }
 

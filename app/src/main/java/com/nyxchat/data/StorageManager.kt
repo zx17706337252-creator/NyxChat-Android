@@ -54,7 +54,7 @@ class StorageManager(context: Context) {
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    inline fun <reified T> load(key: String, default: T): T {
+    @PublishedApi internal inline fun <reified T> load(key: String, default: T): T {
         val json = prefs.getString(key, null) ?: return default
         return try { gson.fromJson(json, object : TypeToken<T>() {}.type) ?: default }
         catch (e: Exception) { default }
@@ -76,7 +76,7 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    inline fun <reified T> loadSecure(key: String, default: T): T {
+    @PublishedApi internal inline fun <reified T> loadSecure(key: String, default: T): T {
         val json = encryptedPrefs.getString(key, null) ?: return default
         return try { gson.fromJson(json, object : TypeToken<T>() {}.type) ?: default }
         catch (e: Exception) { default }

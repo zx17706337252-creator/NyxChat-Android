@@ -71,11 +71,9 @@ fun CharactersScreen(vm: ChatViewModel) {
             }
         }
 
-        val sortedChars = remember(chars, sortOrder) {
-            when (sortOrder) {
-                "active" -> chars.sortedByDescending { it.lastActiveAt }
-                else -> chars.sortedBy { it.name.lowercase() }
-            }
+        val sortedChars = when (sortOrder) {
+            "active" -> chars.sortedByDescending { it.lastActiveAt }
+            else -> chars.sortedBy { it.name.lowercase() }
         }
 
         items(sortedChars, key = { it.id }) { char ->
