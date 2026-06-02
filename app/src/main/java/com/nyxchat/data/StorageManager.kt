@@ -54,14 +54,13 @@ class StorageManager(context: Context) {
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    @PublishedApi
-    internal fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
+    private fun <T> loadJsonImpl(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
         val json = prefs.getString(key, null) ?: return defaultValue
         return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
     }
 
     public inline fun <reified T> load(key: String, default: T): T =
-        loadJson(prefs, key, object : TypeToken<T>() {}.type, default)
+        loadJsonImpl(prefs, key, object : TypeToken<T>() {}.type, default)
 
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
 
@@ -79,12 +78,13 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    @PublishedApi
-    internal fun <T> loadSecureInternal(key: String, default: T): T =
-        loadJson(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
+    private fun <T> loadSecureInternal(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
+        val json = prefs.getString(key, null) ?: return defaultValue
+        return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
+    }
 
     public inline fun <reified T> loadSecure(key: String, default: T): T =
-        loadSecureInternal(key, default)
+        loadSecureInternal(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
 
