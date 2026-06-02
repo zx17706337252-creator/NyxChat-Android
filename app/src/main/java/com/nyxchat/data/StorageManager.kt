@@ -66,15 +66,15 @@ class StorageManager(context: Context) {
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
     // Fix: Gson 2.10+ 禁止在非 inline 函数里用 TypeToken<T>（T 是类型变量会抛 IllegalArgumentException）。
-    // 解决方案：loadJson 改为直接接收 java.lang.reflect.Type，
-    // 调用方在 inline reified 函数里用 TypeToken.get(T::class.java).type 传入，此时 T 已被具体化，不含类型变量。
-    @PublishedApi internal fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
+    // 解决方案：loadJson 直接接收 java.lang.reflect.Type，
+    // 调用方用 object : TypeToken<T>() {}.type 传入。
+    private fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
         val json = prefs.getString(key, null) ?: return default
         return try { gson.fromJson(json, type) ?: default } catch (e: Exception) { default }
     }
 
-    inline fun <reified T> load(key: String, default: T): T =
-        loadJson(prefs, key, TypeToken.get(T::class.java).type, default)
+    fun <T> load(key: String, default: T): T =
+        loadJson(prefs, key, object : TypeToken<T>() {}.type, default)
 
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
 
@@ -92,8 +92,8 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    inline fun <reified T> loadSecure(key: String, default: T): T =
-        loadJson(encryptedPrefs, key, TypeToken.get(T::class.java).type, default)
+    fun <T> loadSecure(key: String, default: T): T =
+        loadJson(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
 
