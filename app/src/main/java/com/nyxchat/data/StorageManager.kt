@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 class StorageManager(context: Context) {
 
     private val appContext = context.applicationContext
-    private val gson = Gson()
+    @PublishedApi internal val gson = Gson()
 
     companion object {
         @Volatile
@@ -36,12 +36,12 @@ class StorageManager(context: Context) {
     }
 
     // 普通存储（非敏感数据）
-    private val prefs: SharedPreferences = appContext.getSharedPreferences("nyx_data", Context.MODE_PRIVATE)
+    @PublishedApi internal val prefs: SharedPreferences = appContext.getSharedPreferences("nyx_data", Context.MODE_PRIVATE)
 
     // 加密存储（敏感数据如API Key）
     // Fix: 部分国产 ROM（如 realme/ColorOS）KeyStore 初始化会抛异常导致闪退，
     // 加 try-catch 降级到普通 SharedPreferences，保证 App 可以正常启动。
-    private val encryptedPrefs: SharedPreferences by lazy {
+    @PublishedApi internal val encryptedPrefs: SharedPreferences by lazy {
         try {
             val masterKey = MasterKey.Builder(appContext)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
