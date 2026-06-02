@@ -54,7 +54,8 @@ class StorageManager(context: Context) {
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    public fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
+    @PublishedApi
+    internal fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
         val json = prefs.getString(key, null) ?: return defaultValue
         return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
     }
@@ -78,8 +79,12 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    public inline fun <reified T> loadSecure(key: String, default: T): T =
+    @PublishedApi
+    internal fun <T> loadSecureInternal(key: String, default: T): T =
         loadJson(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
+
+    public inline fun <reified T> loadSecure(key: String, default: T): T =
+        loadSecureInternal(key, default)
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
 
