@@ -43,10 +43,10 @@ jobs:
           path: |
             ~/.gradle/wrapper
             ~/.gradle/caches
-          # v2- 前缀可手动递增来强制缓存失效（应对 Kotlin 增量缓存污染问题）
-          key: v2-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          # v3- 前缀可手动递增来强制缓存失效（应对 Kotlin 增量缓存污染问题）
+          key: v3-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
           restore-keys: |
-            v2-gradle-${{ runner.os }}-
+            v3-gradle-${{ runner.os }}-
 
       # ── 5. 确保 gradlew 可执行 ─────────────────────────────────────────────
       - name: Grant execute permission for gradlew
