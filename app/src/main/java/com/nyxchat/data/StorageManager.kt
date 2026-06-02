@@ -54,9 +54,9 @@ class StorageManager(context: Context) {
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    public fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
-        val json = prefs.getString(key, null) ?: return default
-        return try { gson.fromJson(json, type) ?: default } catch (e: Exception) { default }
+    public fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
+        val json = prefs.getString(key, null) ?: return defaultValue
+        return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
     }
 
     inline fun <reified T> load(key: String, default: T): T =
