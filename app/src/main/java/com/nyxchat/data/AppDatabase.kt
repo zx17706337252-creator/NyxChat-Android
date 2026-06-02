@@ -124,76 +124,90 @@ interface MemoryDao {
     suspend fun deleteForChar(charId: String)
 
     // Phase 1: keep 默认值 50→200，与 getForCharDecayed 上限同步
-    // 裁剪策略：按与注入时相同的衰减公式排序，保留分数最高的 keep 条
-    @Query("""
-        DELETE FROM memories WHERE charId = :charId AND id NOT IN (
-            SELECT id FROM memories WHERE charId = :charId
-            ORDER BY (importance * 1.0 / (1.0 + CAST(((strftime('%s','now') * 1000 - timestamp) / 86400000.0) AS REAL) * 0.05)) DESC
-            LIMIT :keep
-        )
-    """)
-    suspend fun pruneForChar(charId: String, keep: Int = 200)
+    @Query("DELETE FROM memories WHERE charId = :charId AND id NOT IN (SELECT id FROM memories WHERE charId = :charId ORDER BY (importance * 1.0 / (1.0 + CAST(((:nowMs - timestamp) / 86400000) AS REAL) * 0.05)) DESC LIMIT :keep)")
+    suspend fun pruneForChar(charId: String, nowMs: Long, keep: Int = 200)
 }
 
 // ─── Database ─────────────────────────────────────────────────────────────────
 
-@Database(entities = [MessageEntity::class, MemoryEntity::class], version = 6, exportSchema = false)
+@Database(
+    entities = [MessageEntity::class, MemoryEntity::class],
+    version = 6,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun memoryDao(): MemoryDao
 
     companion object {
-        @Volatile private var INSTANCE: AppDatabase? = null
+        @Volatile
+        private var INSTANCE: AppDatabase? = null
 
-        /** 衰减公式中用到的毫秒/天换算常量（SQL 字符串内直接内联，此处供人工对照）*/
-        const val MILLIS_PER_DAY = 86_400_000L
-
-        // Migration v1→v2: add sessionId column to messages
-        val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN sessionId TEXT NOT NULL DEFAULT 'default'")
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_sessionId ON messages(sessionId)")
+        fun getInstance(context: Context): AppDatabase {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
             }
         }
 
-        // Migration v2→v3: add isGroup column to messages
-        val MIGRATION_2_3 = object : Migration(2, 3) {
+        private fun buildDatabase(context: Context): AppDatabase {
+            return Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "nyx_chat_db"
+            )
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .fallbackToDestructiveMigration()
+                .build()
+        }
+
+        // ─── Migrations ──────────────────────────────────────────────────────────
+
+        // V1 → V2: 新增 isGroup 列（默认 1）
+        val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN isGroup INTEGER NOT NULL DEFAULT 1")
             }
         }
 
-        // Migration v3→v4: add isSummary column for history compression
-        val MIGRATION_3_4 = object : Migration(3, 4) {
+        // V2 → V3: 新增 isSummary 列（默认 0）
+        val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE messages ADD COLUMN isSummary INTEGER NOT NULL DEFAULT 0")
             }
         }
 
-        // Migration v4→v5: add type column to memories (步骤13：记忆类型标签)
+        // V3 → V4: 新增 memories 表
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `memories` (
+                        `id` TEXT NOT NULL,
+                        `charId` TEXT NOT NULL,
+                        `content` TEXT NOT NULL,
+                        `importance` INTEGER NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `type` TEXT NOT NULL DEFAULT 'Public',
+                        PRIMARY KEY(`id`)
+                    )
+                """)
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_memories_charId` ON `memories` (`charId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_memories_importance` ON `memories` (`importance`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_memories_timestamp` ON `memories` (`timestamp`)")
+            }
+        }
+
+        // V4 → V5: 新增 charId 索引到 messages 表
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE memories ADD COLUMN type TEXT NOT NULL DEFAULT 'Public'")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_charId` ON `messages` (`charId`)")
             }
         }
 
-        // P2-B fix: Migration v5→v6: add charId index on messages.
-        // countRecentForChar / birthday check / ProactiveWorker 均按 charId 过滤，
-        // 原来无索引时每次全表扫描，加索引后降为 O(log n)。
+        // V5 → V6: 新增 sessionId 索引到 messages 表
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_messages_charId ON messages(charId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_sessionId` ON `messages` (`sessionId`)")
             }
         }
-
-        fun getInstance(context: Context): AppDatabase =
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext, AppDatabase::class.java, "nyx_database"
-                )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-                .build()
-                .also { INSTANCE = it }
-            }
     }
 }

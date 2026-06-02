@@ -39,28 +39,42 @@ class StorageManager(context: Context) {
     private val prefs: SharedPreferences = appContext.getSharedPreferences("nyx_data", Context.MODE_PRIVATE)
 
     // 加密存储（敏感数据如API Key）
+    // Fix: 部分国产 ROM（如 realme/ColorOS）KeyStore 初始化会抛异常导致闪退，
+    // 加 try-catch 降级到普通 SharedPreferences，保证 App 可以正常启动。
     private val encryptedPrefs: SharedPreferences by lazy {
-        val masterKey = MasterKey.Builder(appContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            appContext,
-            "nyx_secure",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
+        try {
+            val masterKey = MasterKey.Builder(appContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                appContext,
+                "nyx_secure",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("StorageManager", "EncryptedSharedPreferences 初始化失败，降级到普通存储", e)
+            // 降级：删除可能已损坏的加密文件，再用普通 SharedPreferences 顶替
+            try {
+                appContext.deleteSharedPreferences("nyx_secure")
+            } catch (_: Exception) {}
+            appContext.getSharedPreferences("nyx_secure_plain", Context.MODE_PRIVATE)
+        }
     }
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    private fun <T> loadJsonImpl(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
-        val json = prefs.getString(key, null) ?: return defaultValue
-        return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
+    // Fix: Gson 2.10+ 禁止在非 inline 函数里用 TypeToken<T>（T 是类型变量会抛 IllegalArgumentException）。
+    // 解决方案：loadJson 改为直接接收 java.lang.reflect.Type，
+    // 调用方在 inline reified 函数里用 TypeToken.get(T::class.java).type 传入，此时 T 已被具体化，不含类型变量。
+    @PublishedApi internal fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
+        val json = prefs.getString(key, null) ?: return default
+        return try { gson.fromJson(json, type) ?: default } catch (e: Exception) { default }
     }
 
-    public fun <T> load(key: String, default: T): T =
-        loadJsonImpl(prefs, key, object : TypeToken<T>() {}.type, default)
+    inline fun <reified T> load(key: String, default: T): T =
+        loadJson(prefs, key, TypeToken.get(T::class.java).type, default)
 
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
 
@@ -78,13 +92,8 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    private fun <T> loadSecureInternal(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, defaultValue: T): T {
-        val json = prefs.getString(key, null) ?: return defaultValue
-        return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
-    }
-
-    public fun <T> loadSecure(key: String, default: T): T =
-        loadSecureInternal(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
+    inline fun <reified T> loadSecure(key: String, default: T): T =
+        loadJson(encryptedPrefs, key, TypeToken.get(T::class.java).type, default)
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
 

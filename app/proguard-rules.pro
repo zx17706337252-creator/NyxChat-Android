@@ -8,6 +8,10 @@
 -keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
+# Keep Gson TypeToken subclasses (anonymous object : TypeToken<T>() {} in StorageManager)
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-keepclassmembers class * extends com.google.gson.reflect.TypeToken { *; }
 # Keep all NyxChat data classes (SharedPreferences JSON via Gson)
 # WARNING: every class stored with storage.save() / storage.load() MUST be listed here.
 # R8 obfuscates field names → Gson can no longer match JSON keys → silent data loss on reinstall.
