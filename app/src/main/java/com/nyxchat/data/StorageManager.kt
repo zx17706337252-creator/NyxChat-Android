@@ -76,6 +76,12 @@ class StorageManager(context: Context) {
     inline fun <reified T> load(key: String, default: T): T =
         loadJson(prefs, key, com.google.gson.reflect.TypeToken.get(T::class.java).type, default)
 
+    // Fix: 对于 List<SomeDataClass> 这类带泛型参数的类型，T::class.java 只能拿到裸 List.class，
+    // Gson 无法知道元素类型，会把每项反序列化成 LinkedTreeMap 而非目标类，导致 ClassCastException。
+    // loadWithType 让调用方传入完整的 TypeToken，保留完整泛型信息。
+    fun <T> loadWithType(key: String, type: java.lang.reflect.Type, default: T): T =
+        loadJson(prefs, key, type, default)
+
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
 
     fun loadBoolean(key: String, default: Boolean = false): Boolean = prefs.getBoolean(key, default)

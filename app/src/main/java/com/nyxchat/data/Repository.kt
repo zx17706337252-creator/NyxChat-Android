@@ -1,5 +1,7 @@
 package com.nyxchat.data
 
+import com.google.gson.reflect.TypeToken
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -127,23 +129,35 @@ class NyxRepository(context: Context, private val storage: StorageManager = Stor
     // Bug 1 fix: 旧版 JSON 中没有 replyLength 字段时，Gson 将枚举反序列化为 null，
     // 绕过 Kotlin 非空约束，导致 ChatViewModel / PromptPipeline / CharactersScreen 三处 NPE。
     // 在 Repository 层统一兜底：一处修复，覆盖全部下游调用链。
-    fun loadCharacters(): List<NyxCharacter> =
-        storage.load("characters", DEFAULT_CHARACTERS).map { c ->
+    fun loadCharacters(): List<NyxCharacter> {
+        // Fix: List<NyxCharacter> 必须用精确 TypeToken 才能让 Gson 知道元素类型，
+        // 否则每项被反序列化成 LinkedTreeMap，调用 c.copy() 时抛 ClassCastException。
+        val type = object : TypeToken<List<NyxCharacter>>() {}.type
+        return storage.loadWithType("characters", type, DEFAULT_CHARACTERS).map { c ->
             @Suppress("UNNECESSARY_SAFE_CALL")
             c.copy(replyLength = c.replyLength ?: ReplyLength.Medium)
         }
+    }
     fun saveCharacters(v: List<NyxCharacter>)      = storage.save("characters", v)
     // Minor 2 fix: matchMode 与 replyLength 同款问题——旧世界书条目的 matchMode 反序列化为 null，
     // triggerWorldBook() 中的 when(entry.matchMode) 会 NPE。同步修复。
-    fun loadWorldBook(): List<WorldBookEntry> =
-        storage.load("worldbook", DEFAULT_WORLD_BOOK).map { e ->
+    fun loadWorldBook(): List<WorldBookEntry> {
+        val type = object : TypeToken<List<WorldBookEntry>>() {}.type
+        return storage.loadWithType("worldbook", type, DEFAULT_WORLD_BOOK).map { e ->
             @Suppress("UNNECESSARY_SAFE_CALL")
             e.copy(matchMode = e.matchMode ?: MatchMode.ANY)
         }
+    }
     fun saveWorldBook(v: List<WorldBookEntry>)      = storage.save("worldbook", v)
-    fun loadRelationships(): List<Relationship>     = storage.load("relations", emptyList<Relationship>())
+    fun loadRelationships(): List<Relationship> {
+        val type = object : TypeToken<List<Relationship>>() {}.type
+        return storage.loadWithType("relations", type, emptyList())
+    }
     fun saveRelationships(v: List<Relationship>)    = storage.save("relations", v)
-    fun loadSessions(): List<ChatSession>           = storage.load("sessions", listOf(ChatSession("default", "默认对话")))
+    fun loadSessions(): List<ChatSession> {
+        val type = object : TypeToken<List<ChatSession>>() {}.type
+        return storage.loadWithType("sessions", type, listOf(ChatSession("default", "默认对话")))
+    }
     fun saveSessions(v: List<ChatSession>)          = storage.save("sessions", v)
     fun loadUserPersona(): UserPersona              = storage.load("user_persona", UserPersona())
     fun saveUserPersona(v: UserPersona)             = storage.save("user_persona", v)
@@ -187,20 +201,26 @@ class NyxRepository(context: Context, private val storage: StorageManager = Stor
     fun saveDarkMode(v: Boolean)                    = storage.saveBoolean("dark_mode", v)
 
     // 步骤4：里程碑基线（key 含 charId，避免多角色互相污染）
-    fun loadMilestoneBaseline(charId: String): Map<String, Float> =
-        storage.load("milestone_baseline_$charId", emptyMap<String, Float>())
+    fun loadMilestoneBaseline(charId: String): Map<String, Float> {
+        val type = object : TypeToken<Map<String, Float>>() {}.type
+        return storage.loadWithType("milestone_baseline_$charId", type, emptyMap())
+    }
     fun saveMilestoneBaseline(charId: String, v: Map<String, Float>) =
         storage.save("milestone_baseline_$charId", v)
 
     // 步骤6：话题去重记录
-    fun loadProactiveTopics(charId: String): List<String> =
-        storage.load("proactive_topics_$charId", emptyList<String>())
+    fun loadProactiveTopics(charId: String): List<String> {
+        val type = object : TypeToken<List<String>>() {}.type
+        return storage.loadWithType("proactive_topics_$charId", type, emptyList())
+    }
     fun saveProactiveTopics(charId: String, v: List<String>) =
         storage.save("proactive_topics_$charId", v)
 
     // 步骤12：关系事件日志
-    fun loadRelationshipLog(charId: String): List<RelationshipLogEntry> =
-        storage.load("rel_log_$charId", emptyList<RelationshipLogEntry>())
+    fun loadRelationshipLog(charId: String): List<RelationshipLogEntry> {
+        val type = object : TypeToken<List<RelationshipLogEntry>>() {}.type
+        return storage.loadWithType("rel_log_$charId", type, emptyList())
+    }
     fun appendRelationshipLog(charId: String, entry: RelationshipLogEntry) {
         val existing = loadRelationshipLog(charId).takeLast(99)   // 最多保留 100 条
         storage.save("rel_log_$charId", existing + entry)
