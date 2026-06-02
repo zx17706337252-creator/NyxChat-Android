@@ -59,7 +59,7 @@ class StorageManager(context: Context) {
         return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
     }
 
-    public inline fun <reified T> load(key: String, default: T): T =
+    public fun <T> load(key: String, default: T): T =
         loadJsonImpl(prefs, key, object : TypeToken<T>() {}.type, default)
 
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
@@ -83,7 +83,7 @@ class StorageManager(context: Context) {
         return try { gson.fromJson(json, type) ?: defaultValue } catch (e: Exception) { defaultValue }
     }
 
-    public inline fun <reified T> loadSecure(key: String, default: T): T =
+    public fun <T> loadSecure(key: String, default: T): T =
         loadSecureInternal(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
