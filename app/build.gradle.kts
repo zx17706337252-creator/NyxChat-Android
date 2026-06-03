@@ -36,7 +36,6 @@ android {
     lint {
         abortOnError = false
         htmlReport = true
-        htmlOutputFile = file("build/reports/lint-results.html")
         disable += setOf(
             "NewApi",            // Compose 内部大量 RequiresApi 注解，误报多
             "OldTargetApi",      // security-crypto alpha 库自身 targetSdk 较旧
