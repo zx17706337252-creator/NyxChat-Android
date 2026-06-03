@@ -29,23 +29,23 @@ class StorageManager(context: Context) {
          * Hilt 主路径通过 RepositoryModule.provideStorageManager 调用此方法，
          * 两条路径共享同一实例，保证 EncryptedSharedPreferences / MasterKey 只初始化一次。
          */
-        fun getInstance(context: Context): StorageManager =
-            instance ?: synchronized(this) {
-                instance ?: StorageManager(context.applicationContext).also { instance = it }
+        fun getInstance(context: Context): StorageManager {
+            return instance ?: synchronized(this) {
+                instance ?: StorageManager(context).also { instance = it }
             }
+        }
     }
 
-    // 普通存储（非敏感数据）
-    private val prefs: SharedPreferences = appContext.getSharedPreferences("nyx_data", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences =
+        appContext.getSharedPreferences("nyxchat_prefs", Context.MODE_PRIVATE)
 
-    // 加密存储（敏感数据如API Key）
     private val encryptedPrefs: SharedPreferences by lazy {
         val masterKey = MasterKey.Builder(appContext)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
         EncryptedSharedPreferences.create(
             appContext,
-            "nyx_secure",
+            "nyxchat_secure_prefs",
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
@@ -54,13 +54,19 @@ class StorageManager(context: Context) {
 
     // ─── 普通存储读写 ─────────────────────────────────────────────────────────────
 
-    public fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
+    fun <T> loadJson(prefs: SharedPreferences, key: String, type: java.lang.reflect.Type, default: T): T {
         val json = prefs.getString(key, null) ?: return default
         return try { gson.fromJson(json, type) ?: default } catch (e: Exception) { default }
     }
 
-    inline fun <reified T> load(key: String, default: T): T =
-        loadJson(prefs, key, object : TypeToken<T>() {}.type, default)
+    @Suppress("UNCHECKED_CAST")
+    fun <T> load(key: String, default: T): T {
+        val json = prefs.getString(key, null) ?: return default
+        return try {
+            val type = object : TypeToken<T>() {}.type
+            gson.fromJson<T>(json, type) ?: default
+        } catch (e: Exception) { default }
+    }
 
     fun save(key: String, v: Any) = prefs.edit().putString(key, gson.toJson(v)).apply()
 
@@ -78,8 +84,14 @@ class StorageManager(context: Context) {
 
     fun saveSecureString(key: String, v: String) = encryptedPrefs.edit().putString(key, v).apply()
 
-    inline fun <reified T> loadSecure(key: String, default: T): T =
-        loadJson(encryptedPrefs, key, object : TypeToken<T>() {}.type, default)
+    @Suppress("UNCHECKED_CAST")
+    fun <T> loadSecure(key: String, default: T): T {
+        val json = encryptedPrefs.getString(key, null) ?: return default
+        return try {
+            val type = object : TypeToken<T>() {}.type
+            gson.fromJson<T>(json, type) ?: default
+        } catch (e: Exception) { default }
+    }
 
     fun saveSecure(key: String, v: Any) = encryptedPrefs.edit().putString(key, gson.toJson(v)).apply()
 
