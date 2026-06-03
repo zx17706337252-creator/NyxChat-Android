@@ -853,6 +853,7 @@ class ChatViewModel @Inject constructor(
                 wave2.takeIf { it.isNotEmpty() }
             )
 
+            var roundReplies: List<Pair<String, String>> = emptyList()
             // Bug fix (moved above launch): _isStreaming is now set to true before the launch call,
             // so the flag is visible above and the line below is removed to avoid redundancy.
             try {
@@ -1009,7 +1010,7 @@ class ChatViewModel @Inject constructor(
             // ── 旧版 for 循环占位符（已被上方波次循环完全替代，保留注释追溯）─ //
             // for (char in ordered) { ... }  ← 已重构为分波并行
             // roundReplies 现在由 roundRepliesQueue 承担，下方 finallyBlock 统一转换
-            val roundReplies = roundRepliesQueue.toList()
+            roundReplies = roundRepliesQueue.toList()
             // ── 以下保留原 for 循环后的逻辑，占位让编译器不报 unresolved ─── //
             // ── 波次循环结束，roundReplies 快照已在上方 val roundReplies = ... 处取得 ── //
             } finally {
