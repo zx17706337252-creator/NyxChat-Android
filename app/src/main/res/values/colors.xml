@@ -1,7 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <!-- Light theme base colors (used by XML theme) -->
+    
     <color name="bg_base">#F7F8FA</color>
     <color name="bg_card">#FFFFFF</color>
     <color name="accent">#8A9FB5</color>
-</resources>
+<color name="ic_launcher_background">#8A9FB5</color></resources>
