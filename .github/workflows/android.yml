@@ -6,24 +6,24 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── 2. JDK 17 ─────────────────────────────────────────────────────────
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 3. Android SDK ────────────────────────────────────────────────────
       - name: Set up Android SDK 35
         uses: android-actions/setup-android@v3
 
@@ -34,7 +34,6 @@ jobs:
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
 
-      # ── 4. Gradle 缓存 ────────────────────────────────────────────────────
       - name: Cache Gradle wrapper & caches
         uses: actions/cache@v4
         with:
@@ -45,23 +44,18 @@ jobs:
           restore-keys: |
             v2-gradle-${{ runner.os }}-
 
-      # ── 5. 确保 gradlew 可执行 ─────────────────────────────────────────────
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # ── 5b. 清理增量编译缓存 ────────────────────────────────────────────────
       - name: Clean build artifacts
         run: ./gradlew clean --no-daemon
 
-      # ── 6. Debug APK ──────────────────────────────────────────────────────
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      # ── 7. Release APK ──────────────────────────────────────────────────
       - name: Build Release APK (unsigned)
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-      # ── 8. 上传 APK 产物 ──────────────────────────────────────────────────
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
@@ -76,11 +70,3 @@ jobs:
           name: app-release-unsigned
           path: app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 7
-
-      # ── 9. 上传到 GitHub Release ──────────────────────────────────────────
-      - name: Upload APK to Release
-        if: github.ref == 'refs/heads/main' && success()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload v0.5.0-beta app/build/outputs/apk/debug/app-debug.apk --repo ${{ github.repository }} --clobber
