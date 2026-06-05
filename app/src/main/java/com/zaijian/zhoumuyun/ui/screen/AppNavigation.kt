@@ -128,6 +128,29 @@ private val detailExit =
     fadeOut(tween(AnimDuration.pageSwitch))
 
 // ─────────────────────────────────────────────────────────────
+//  Bottom nav helper composables
+// ─────────────────────────────────────────────────────────────
+
+/** 导航栏选中指示点（提取为独立 composable 避免 RowScope 作用域污染） */
+@Composable
+private fun SelectionIndicator(visible: Boolean, accent: Color) {
+    AnimatedVisibility(
+        visible  = visible,
+        enter    = fadeIn(tween(AnimDuration.fast)) +
+                   scaleIn(tween(AnimDuration.fast), 0.5f),
+        exit     = fadeOut(tween(AnimDuration.fast)) +
+                   scaleOut(tween(AnimDuration.fast), 0.5f),
+        modifier = Modifier.padding(top = 28.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp)
+                .background(accent, CircleShape),
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 //  App scaffold with bottom navigation
 // ─────────────────────────────────────────────────────────────
 
@@ -135,7 +158,7 @@ private val detailExit =
 fun AppNavigation() {
     val navController = rememberNavController()
     val colors        = ZaijianTheme.colors
-    val type          = ZaijianTheme.typography
+    val appType       = ZaijianTheme.typography
     val navBackStack  by navController.currentBackStackEntryAsState()
     val currentRoute  = navBackStack?.destination?.route
 
@@ -174,23 +197,13 @@ fun AppNavigation() {
                                         modifier           = Modifier.size(24.dp),
                                     )
                                     // 选中指示点：4dp 圆点 fade+scale 动画
-                                    AnimatedVisibility(
-                                        visible  = selected,
-                                        enter    = fadeIn(tween(AnimDuration.fast)) +
-                                                   scaleIn(tween(AnimDuration.fast), 0.5f),
-                                        exit     = fadeOut(tween(AnimDuration.fast)) +
-                                                   scaleOut(tween(AnimDuration.fast), 0.5f),
-                                        modifier = Modifier.padding(top = 28.dp),
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(4.dp)
-                                                .background(colors.accent, CircleShape),
-                                        )
-                                    }
+                                    SelectionIndicator(
+                                        visible = selected,
+                                        accent  = colors.accent,
+                                    )
                                 }
                             },
-                            label  = { Text(item.label, style = type.label) },
+                            label  = { Text(item.label, style = appType.label) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor   = colors.accent,
                                 selectedTextColor   = colors.accent,
