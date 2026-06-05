@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 用于 adaptive icon 的背景色，被 @mipmap-anydpi-v26/ic_launcher.xml 引用 -->
-    <color name="ic_launcher_background">#05030E</color>
+    <!-- Light theme base colors (used by XML theme) -->
+    <color name="bg_base">#F7F8FA</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="accent">#8A9FB5</color>
 </resources>
