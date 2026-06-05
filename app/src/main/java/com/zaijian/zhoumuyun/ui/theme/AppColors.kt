@@ -35,6 +35,11 @@ object Palette {
     val TaskDone   = Color(0xFF6BCB8B)
     val TaskFailed = Color(0xFFF47067)
 
+    // M3 scheme bridge colors
+    val Slate = Color(0xFF8A9FB5)
+    val Snow  = Color(0xFFFBF7F0)
+    val Paper = Color(0xFFF5F0E8)
+
     // 角色专属色（与角色人设强绑定，保留）
     val Difa     = Color(0xFF8A9FB5)
     val Luna     = Color(0xFFB49AC6)
