@@ -1,0 +1,100 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK 35
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK 35 & Build Tools
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" \
+            "platform-tools" --sdk_root=$ANDROID_SDK_ROOT
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+
+      - name: Cache Gradle wrapper & caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: v2-gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            v2-gradle-${{ runner.os }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Clean build artifacts
+        run: ./gradlew clean --no-daemon
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Sign Release APK with debug keystore
+        run: |
+          # Generate a debug keystore for signing
+          keytool -genkey -v -keystore $HOME/debug.keystore \
+            -alias debugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug, OU=Debug, O=Android, L=Unknown, ST=Unknown, C=US"
+          # Align
+          $ANDROID_SDK_ROOT/build-tools/35.0.0/zipalign -f -p 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
+          # Sign
+          $ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner sign \
+            --ks $HOME/debug.keystore \
+            --ks-key-alias debugkey \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: Upload Signed Release APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: app-release
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+
+      - name: Upload to Release
+        if: github.ref == 'refs/heads/main' && success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload v0.5.0-beta app/build/outputs/apk/debug/app-debug.apk --repo ${{ github.repository }} --clobber
+          gh release upload v0.5.0-beta app/build/outputs/apk/release/app-release.apk --repo ${{ github.repository }} --clobber
